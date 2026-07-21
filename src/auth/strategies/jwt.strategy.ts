@@ -13,15 +13,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     ) {
 
         super({
-
-            jwtFromRequest:
-                ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 
             ignoreExpiration: false,
 
-            secretOrKey:
-                configService.getOrThrow<string>('JWT_SECRET'),
+            secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
 
+            issuer: configService.getOrThrow<string>('JWT_ISSUER'),
+
+            audience: configService.getOrThrow<string>('JWT_AUDIENCE'),
         });
 
     }
@@ -30,17 +30,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     async validate(payload: any) {
 
+        console.log("JWT PAYLOAD RECEIVED:", payload);
+
         return {
-
             id: payload.sub,
-
             username: payload.username,
-
-            role: payload.role
-
+            role: payload.role,
         };
 
     }
-
 
 }
