@@ -32,16 +32,16 @@ export class ExpenseService {
                         crypto.randomUUID(),
 
                     Title:
-                        dto.Title,
+                        dto.title,
 
                     Amount:
-                        dto.Amount,
+                        dto.amount,
 
                     Category:
-                        dto.Category,
+                        dto.category,
 
                     Notes:
-                        dto.Notes,
+                        dto.notes,
 
                     ExpenseDate:
                         new Date()
@@ -58,13 +58,13 @@ export class ExpenseService {
 
             "OUT",
 
-            dto.Amount,
+            dto.amount,
 
             "EXPENSE",
 
             expense.Id,
 
-            dto.Title
+            dto.title
 
         );
 

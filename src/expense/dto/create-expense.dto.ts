@@ -5,20 +5,20 @@ export class CreateExpenseDto {
 
 
     @IsString()
-    Title!: string;
+    title!: string;
 
 
     @IsNumber()
-    Amount!: number;
+    amount!: number;
 
 
     @IsString()
-    Category!: string;
+    category!: string;
 
 
     @IsOptional()
     @IsString()
-    Notes?: string;
+    notes?: string;
 
 
 }

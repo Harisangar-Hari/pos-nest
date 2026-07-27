@@ -5,11 +5,11 @@ export class PayCustomerCreditDto {
 
 
     @IsUUID()
-    CustomerId!: string;
+    customerId!: string;
 
 
     @IsNumber()
-    Amount!: number;
+    amount!: number;
 
 
     SaleIds?: string[];

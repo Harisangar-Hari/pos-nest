@@ -1,10 +1,11 @@
-import { IsNumber } from "class-validator";
+import { IsNumber, IsUUID } from "class-validator";
 
+export class PayCustomerCreditDto {
 
-export class PayCreditDto {
-
+    @IsUUID()
+    customerId!: string;
 
     @IsNumber()
-    Amount!: number;
+    amount!: number;
 
 }

@@ -31,9 +31,11 @@ export class SalesService {
         return await this.prisma.$transaction(
             async (tx) => {
 
+
                 let total = 0;
 
                 let customer: any = null;
+
 
 
                 // ============================
@@ -42,17 +44,23 @@ export class SalesService {
 
                 if (dto.customerId) {
 
-                    customer = await tx.customers.findUnique({
-                        where: {
-                            Id: dto.customerId
-                        }
-                    });
+
+                    customer =
+                        await tx.customers.findUnique({
+
+                            where: {
+                                Id: dto.customerId
+                            }
+
+                        });
 
 
                     if (!customer) {
+
                         throw new BadRequestException(
                             "Customer not found"
                         );
+
                     }
 
                 }
@@ -74,6 +82,7 @@ export class SalesService {
 
 
                     if (!customer) {
+
 
                         customer =
                             await tx.customers.create({
@@ -109,6 +118,9 @@ export class SalesService {
 
 
 
+
+
+
                 // ============================
                 // CREATE SALE
                 // ============================
@@ -119,8 +131,9 @@ export class SalesService {
 
                         data: {
 
+                            Id:
+                                randomUUID(),
 
-                            Id: randomUUID(),
 
                             InvoiceNumber:
                                 "INV-" + Date.now(),
@@ -130,26 +143,35 @@ export class SalesService {
                                 new Date(),
 
 
-                            Status: 0,
+                            Status:
+                                0,
 
 
-                            TotalAmount: 0,
+                            TotalAmount:
+                                0,
 
-                            PaidAmount: 0,
 
-                            BalanceAmount: 0,
+                            PaidAmount:
+                                0,
+
+
+                            BalanceAmount:
+                                0,
 
 
                             CustomerId:
                                 customer?.Id ?? null,
 
 
-                            IsCreditSale: false
-
+                            IsCreditSale:
+                                false
 
                         }
 
                     });
+
+
+
 
 
 
@@ -207,6 +229,11 @@ export class SalesService {
 
 
 
+
+
+
+                    // reduce stock
+
                     await tx.products.update({
 
                         where: {
@@ -217,7 +244,10 @@ export class SalesService {
                         data: {
 
                             StockQty: {
-                                decrement: item.quantity
+
+                                decrement:
+                                    item.quantity
+
                             }
 
                         }
@@ -227,29 +257,35 @@ export class SalesService {
 
 
 
+
+
+
                     await tx.saleItems.create({
 
                         data: {
 
-
-                            Id: randomUUID(),
-
-
-                            SaleId: sale.Id,
+                            Id:
+                                randomUUID(),
 
 
-                            ProductId: product.Id,
+                            SaleId:
+                                sale.Id,
 
 
-                            Quantity: item.quantity,
+                            ProductId:
+                                product.Id,
+
+
+                            Quantity:
+                                item.quantity,
 
 
                             UnitPrice:
                                 product.Price,
 
 
-                            Total: itemTotal
-
+                            Total:
+                                itemTotal
 
                         }
 
@@ -264,13 +300,25 @@ export class SalesService {
 
 
 
+
+
                 // ============================
                 // PAYMENT
                 // ============================
 
 
-                const paid =
+                const receivedAmount =
                     dto.paidAmount ?? 0;
+
+
+
+                // amount applied to invoice
+
+                const paid =
+                    Math.min(
+                        receivedAmount,
+                        total
+                    );
 
 
 
@@ -280,26 +328,34 @@ export class SalesService {
 
 
 
+
+
+
+
+
                 await tx.sales.update({
 
                     where: {
-                        Id: sale.Id
+
+                        Id:
+                            sale.Id
+
                     },
 
 
                     data: {
 
 
-                        TotalAmount: total,
+                        TotalAmount:
+                            total,
 
 
-                        PaidAmount: paid,
+                        PaidAmount:
+                            paid,
 
 
                         BalanceAmount:
-                            balance > 0
-                                ? balance
-                                : 0,
+                            balance,
 
 
                         IsCreditSale:
@@ -317,8 +373,9 @@ export class SalesService {
 
 
 
+
                 // ============================
-                // CREDIT PAYMENT
+                // CREDIT PAYMENT RECORD
                 // ============================
 
 
@@ -330,21 +387,25 @@ export class SalesService {
                         data: {
 
 
-                            Id: randomUUID(),
+                            Id:
+                                randomUUID(),
 
 
-                            SaleId: sale.Id,
+                            SaleId:
+                                sale.Id,
 
 
-                            Amount: paid,
+                            Amount:
+                                paid,
 
 
-                            PaidAt: new Date()
-
+                            PaidAt:
+                                new Date()
 
                         }
 
                     });
+
 
                 }
 
@@ -354,8 +415,54 @@ export class SalesService {
 
 
 
+
+
                 // ============================
-                // CUSTOMER LEDGER
+                // CASH LEDGER
+                // ============================
+
+
+                /*
+                    Actual money received from customer
+    
+                    Example:
+                    Invoice = 4200
+                    Customer gives = 5000
+    
+                    Cash ledger = 5000
+                */
+
+
+                if (paid > 0) {
+
+
+                    await this.cashLedger.add(
+
+                        "IN",
+
+                        paid,
+
+                        "SALE",
+
+                        sale.InvoiceNumber,
+
+                        `Cash received for ${sale.InvoiceNumber}`
+
+                    );
+
+
+                }
+
+
+
+
+
+
+
+
+
+                // ============================
+                // CUSTOMER CREDIT LEDGER
                 // ============================
 
 
@@ -367,7 +474,8 @@ export class SalesService {
                         data: {
 
 
-                            Id: randomUUID(),
+                            Id:
+                                randomUUID(),
 
 
                             CustomerId:
@@ -382,10 +490,12 @@ export class SalesService {
                                 balance,
 
 
-                            Debit: 0,
+                            Debit:
+                                0,
 
 
-                            Type: "SALE",
+                            Type:
+                                "SALE",
 
 
                             CreatedAt:
@@ -405,6 +515,8 @@ export class SalesService {
 
 
 
+
+
                 // ============================
                 // LOYALTY
                 // ============================
@@ -414,14 +526,19 @@ export class SalesService {
 
 
                     const points =
-                        Math.floor(total / 2000);
+                        Math.floor(
+                            total / 2000
+                        );
 
 
 
                     await tx.customers.update({
 
                         where: {
-                            Id: customer.Id
+
+                            Id:
+                                customer.Id
+
                         },
 
 
@@ -429,14 +546,19 @@ export class SalesService {
 
 
                             TotalSpent: {
-                                increment: total
+
+                                increment:
+                                    total
+
                             },
 
 
                             LoyaltyPoints: {
-                                increment: points
-                            }
 
+                                increment:
+                                    points
+
+                            }
 
                         }
 
@@ -444,6 +566,9 @@ export class SalesService {
 
 
                 }
+
+
+
 
 
 
@@ -469,10 +594,20 @@ export class SalesService {
                         paid,
 
 
+                    ReceivedAmount:
+                        receivedAmount,
+
+
                     BalanceAmount:
-                        balance > 0
-                            ? balance
-                            : 0,
+                        balance,
+
+
+                    ChangeAmount:
+                        receivedAmount > total
+                            ?
+                            receivedAmount - total
+                            :
+                            0,
 
 
                     CustomerId:
@@ -483,10 +618,18 @@ export class SalesService {
 
 
             },
+
             {
-                timeout: 15000,
-                maxWait: 5000
+
+                timeout:
+                    15000,
+
+
+                maxWait:
+                    5000
+
             }
+
         );
 
     }
@@ -854,135 +997,61 @@ export class SalesService {
 
     async returnItems(dto: CreateSaleReturnDto) {
 
+        return await this.prisma.$transaction(async (tx) => {
 
-        const sale =
-            await this.prisma.sales.findFirst({
 
-                where: {
+            const sale =
+                await tx.sales.findFirst({
 
-                    InvoiceNumber: dto.invoiceNumber
+                    where: {
+                        InvoiceNumber: dto.invoiceNumber
+                    },
 
-                },
+                    include: {
+                        SaleItems: true
+                    }
 
-                include: {
-
-                    SaleItems: true
-
-                }
-
-            });
+                });
 
 
 
-        if (!sale) {
+            if (!sale) {
 
-            throw new NotFoundException(
-                "Invoice not found"
-            );
-
-        }
-
-
-
-        let totalRefund = 0;
-
-
-
-        // ============================
-        // CREATE SALE RETURN
-        // ============================
-
-        const saleReturn =
-            await this.prisma.saleReturns.create({
-
-                data: {
-
-                    Id: crypto.randomUUID(),
-
-                    SaleId: sale.Id,
-
-                    Reason: dto.reason,
-
-                    ReturnedAt: new Date(),
-
-                    ReturnAmount: 0
-
-                }
-
-            });
-
-
-
-
-
-        // ============================
-        // RETURN ITEMS
-        // ============================
-
-        for (const item of dto.items) {
-
-
-
-            const saleItem =
-                sale.SaleItems.find(
-
-                    x =>
-                        x.ProductId === item.productId
-
-                );
-
-
-
-            if (!saleItem) {
-
-                throw new BadRequestException(
-                    "Invalid product"
+                throw new NotFoundException(
+                    "Invoice not found"
                 );
 
             }
 
 
 
-
-
-            const refund =
-                Number(saleItem.UnitPrice)
-                *
-                item.quantity;
-
-
-
-            totalRefund += refund;
-
-
+            let totalRefund = 0;
 
 
 
             // ============================
-            // RESTORE STOCK
+            // CREATE SALE RETURN
             // ============================
 
-            await this.prisma.products.update({
 
-                where: {
+            const saleReturn =
+                await tx.saleReturns.create({
 
-                    Id: item.productId
+                    data: {
 
-                },
+                        Id: crypto.randomUUID(),
 
+                        SaleId: sale.Id,
 
-                data: {
+                        Reason: dto.reason,
 
-                    StockQty: {
+                        ReturnedAt: new Date(),
 
-                        increment: item.quantity
+                        ReturnAmount: 0
 
                     }
 
-                }
-
-            });
-
+                });
 
 
 
@@ -990,74 +1059,192 @@ export class SalesService {
 
 
             // ============================
-            // CREATE RETURN ITEM
+            // PROCESS RETURN ITEMS
             // ============================
 
-            await this.prisma.saleReturnItems.create({
 
-                data: {
-
-
-                    Id: crypto.randomUUID(),
+            for (const item of dto.items) {
 
 
-                    SaleReturnId:
-                        saleReturn.Id,
+
+                const saleItem =
+                    sale.SaleItems.find(
+                        x =>
+                            x.ProductId === item.productId
+                    );
 
 
-                    ProductId:
-                        item.productId,
 
+                if (!saleItem) {
 
-                    Quantity:
-                        item.quantity,
-
-
-                    UnitPrice:
-                        saleItem.UnitPrice,
-
-
-                    Reason:
-                        dto.reason
-
+                    throw new BadRequestException(
+                        "Invalid product"
+                    );
 
                 }
 
-            });
-
-
-        }
 
 
 
 
+                // CHECK SOLD QUANTITY
+
+                if (item.quantity <= 0) {
+
+                    throw new BadRequestException(
+                        "Invalid return quantity"
+                    );
+
+                }
 
 
 
-        // ============================
-        // UPDATE RETURN TOTAL
-        // ============================
+
+                // CHECK ALREADY RETURNED QUANTITY
 
 
-        await this.prisma.saleReturns.update({
+                const returned =
+                    await tx.saleReturnItems.aggregate({
 
-            where: {
+                        where: {
 
-                Id: saleReturn.Id
+                            ProductId: item.productId,
 
-            },
+                            SaleReturns: {
+
+                                SaleId: sale.Id
+
+                            }
+
+                        },
 
 
-            data: {
+                        _sum: {
+
+                            Quantity: true
+
+                        }
 
 
-                ReturnAmount:
-                    totalRefund
+                    });
+
+
+
+                const alreadyReturned =
+                    returned._sum.Quantity ?? 0;
+
+
+
+                const remainingQty =
+                    saleItem.Quantity - alreadyReturned;
+
+
+
+
+                if (item.quantity > remainingQty) {
+
+
+                    throw new BadRequestException(
+
+                        `Return quantity exceeds available quantity for product`
+
+                    );
+
+                }
+
+
+
+
+
+                const refund =
+                    Number(saleItem.UnitPrice)
+                    *
+                    item.quantity;
+
+
+
+                totalRefund += refund;
+
+
+
+
+
+
+                // ============================
+                // RESTORE STOCK
+                // ============================
+
+
+                await tx.products.update({
+
+                    where: {
+
+                        Id: item.productId
+
+                    },
+
+
+                    data: {
+
+                        StockQty: {
+
+                            increment: item.quantity
+
+                        }
+
+                    }
+
+                });
+
+
+
+
+
+
+
+
+                // ============================
+                // CREATE RETURN ITEM
+                // ============================
+
+
+                await tx.saleReturnItems.create({
+
+                    data: {
+
+
+                        Id: crypto.randomUUID(),
+
+
+                        SaleReturnId:
+                            saleReturn.Id,
+
+
+                        ProductId:
+                            item.productId,
+
+
+                        Quantity:
+                            item.quantity,
+
+
+                        UnitPrice:
+                            saleItem.UnitPrice,
+
+
+                        Reason:
+                            dto.reason
+
+
+                    }
+
+
+                });
+
 
 
             }
 
-        });
 
 
 
@@ -1065,104 +1252,144 @@ export class SalesService {
 
 
 
-
-        // ============================
-        // UPDATE SALE
-        // ============================
-
-
-        await this.prisma.sales.update({
-
-            where: {
-
-                Id: sale.Id
-
-            },
+            // ============================
+            // UPDATE RETURN TOTAL
+            // ============================
 
 
-            data: {
+            await tx.saleReturns.update({
+
+                where: {
+                    Id: saleReturn.Id
+                },
 
 
-                HasReturns: true,
+                data: {
 
-
-                ReturnedAmount: {
-
-                    increment:
+                    ReturnAmount:
                         totalRefund
+
+                }
+
+
+            });
+
+
+
+
+
+
+
+
+            // ============================
+            // UPDATE SALE AMOUNTS
+            // ============================
+
+
+            const oldPaid =
+                Number(sale.PaidAmount);
+
+
+
+            const oldBalance =
+                Number(sale.BalanceAmount);
+
+
+
+
+            const refundFromPaid =
+                Math.min(
+                    totalRefund,
+                    oldPaid
+                );
+
+
+
+
+            const newPaid =
+                oldPaid - refundFromPaid;
+
+
+
+            const newBalance =
+                Math.max(
+                    oldBalance - (totalRefund - refundFromPaid),
+                    0
+                );
+
+
+
+
+
+            const returnedAmount =
+                Number(sale.ReturnedAmount ?? 0)
+                +
+                totalRefund;
+
+
+
+
+
+
+            let status = sale.Status;
+
+
+
+            if (
+                returnedAmount >= Number(sale.TotalAmount)
+            ) {
+
+                status = 2; // Returned
+
+            }
+            else {
+
+                status = 1; // Partially Returned
+
+            }
+
+
+
+
+
+
+            await tx.sales.update({
+
+                where: {
+
+                    Id: sale.Id
 
                 },
 
 
-                BalanceAmount: {
-
-                    decrement:
-                        totalRefund
-
-                }
-
-
-            }
-
-        });
-
-
-
-
-
-
-
-        // ============================
-        // CUSTOMER LEDGER
-        // ============================
-
-
-        if (sale.CustomerId) {
-
-
-            await this.prisma.customerLedgerEntries.create({
-
                 data: {
 
 
-                    Id:
-                        crypto.randomUUID(),
+                    HasReturns: true,
 
 
-                    CustomerId:
-                        sale.CustomerId,
+                    ReturnedAmount:
+                        returnedAmount,
 
 
-                    SaleId:
-                        sale.Id,
+                    PaidAmount:
+                        newPaid,
 
 
-                    SaleReturnId:
-                        saleReturn.Id,
+                    BalanceAmount:
+                        newBalance,
 
 
-                    Debit:
-                        totalRefund,
-
-
-                    Credit:
-                        0,
-
-
-                    Type:
-                        "RETURN",
-
-
-                    CreatedAt:
-                        new Date()
+                    Status:
+                        status
 
 
                 }
+
 
             });
 
 
-        }
 
 
 
@@ -1170,47 +1397,121 @@ export class SalesService {
 
 
 
-        // ============================
-        // CASH LEDGER
-        // ============================
-
-        await this.cashLedger.add(
-
-            "OUT",
-
-            totalRefund,
-
-            "RETURN",
-
-            dto.invoiceNumber,
-
-            `Refund for ${dto.invoiceNumber}`
-
-        );
+            // ============================
+            // CUSTOMER LEDGER
+            // ============================
 
 
+            if (sale.CustomerId) {
+
+
+                await tx.customerLedgerEntries.create({
+
+                    data: {
+
+
+                        Id:
+                            crypto.randomUUID(),
+
+
+                        CustomerId:
+                            sale.CustomerId,
+
+
+                        SaleId:
+                            sale.Id,
+
+
+                        SaleReturnId:
+                            saleReturn.Id,
+
+
+                        Debit:
+                            totalRefund,
+
+
+                        Credit:
+                            0,
+
+
+                        Type:
+                            "RETURN",
+
+
+                        CreatedAt:
+                            new Date()
+
+
+                    }
+
+
+                });
+
+
+            }
 
 
 
 
 
-        return {
 
 
-            message:
-                "Return processed successfully",
+
+            // ============================
+            // CASH REFUND ONLY
+            // ============================
 
 
-            refund:
-                totalRefund,
+            if (refundFromPaid > 0) {
 
 
-            invoiceNumber:
-                dto.invoiceNumber
+                await this.cashLedger.add(
+
+                    "OUT",
+
+                    refundFromPaid,
+
+                    "RETURN",
+
+                    dto.invoiceNumber,
+
+                    `Refund for ${dto.invoiceNumber}`
+
+                );
 
 
-        };
+            }
 
+
+
+
+
+
+
+            return {
+
+
+                message:
+                    "Return processed successfully",
+
+
+                refund:
+                    totalRefund,
+
+
+                cashRefund:
+                    refundFromPaid,
+
+
+                invoiceNumber:
+                    dto.invoiceNumber
+
+
+            };
+
+
+
+        });
 
     }
 

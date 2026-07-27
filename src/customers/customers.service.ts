@@ -71,8 +71,8 @@ export class CustomersService {
 
 
                         where: {
-                            Status: {
-                                not: 1
+                            BalanceAmount: {
+                                gt: 0
                             }
                         },
 
@@ -449,7 +449,7 @@ export class CustomersService {
             await this.prisma.customers.findUnique({
 
                 where: {
-                    Id: dto.CustomerId
+                    Id: dto.customerId
                 },
 
 
@@ -472,7 +472,7 @@ export class CustomersService {
 
 
 
-        let remaining = dto.Amount;
+        let remaining = dto.amount;
 
 
 
