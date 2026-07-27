@@ -96,3 +96,13 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+
+
+
+DATABASE_URL="postgresql://neondb_owner:npg_NjzZGs0Yo5BO@ep-old-hall-aqphvpsy-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+JWT_SECRET=THIS_IS_SUPER_SECRET_KEY_CHANGE_IT
+JWT_ISSUER=mylpos
+JWT_AUDIENCE=mylpos-users
