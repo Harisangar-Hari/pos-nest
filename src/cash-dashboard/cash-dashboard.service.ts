@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
+import { BadRequestException } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { ManualCashDto } from './dto/manual-cash.dto';
+
 
 @Injectable()
 export class CashDashboardService {
@@ -101,5 +105,49 @@ export class CashDashboardService {
         };
 
     }
+
+    async addManualCash(
+    dto: ManualCashDto
+) {
+
+    if (dto.amount <= 0) {
+
+        throw new BadRequestException(
+            'Amount must be greater than zero'
+        );
+
+    }
+
+    await this.prisma.cashLedgerEntries.create({
+
+        data: {
+
+            Id: crypto.randomUUID(),
+
+            Date: new Date(),
+
+            CreatedAt: new Date(),
+
+            Type: dto.type,
+
+            Amount: dto.amount,
+
+            Category: dto.category,
+
+            Description: dto.description ?? 'Manual Cash Entry',
+
+            ReferenceId: null
+
+        }
+
+    });
+
+    return {
+
+        message: 'Manual cash entry added successfully'
+
+    };
+
+}
 
 }
