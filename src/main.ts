@@ -14,7 +14,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:5174',
       'https://pos-billing-five.vercel.app',
-      'https://pos-admin-delta.vercel.app/'
+      'https://pos-admin-delta.vercel.app'
     ],
 
     methods: [
